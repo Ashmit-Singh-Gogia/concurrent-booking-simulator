@@ -1,9 +1,12 @@
 self.onmessage = (event) => {
-    const sharedBuffer = event.data.buffer;
-    const sharedView = new Int32Array(sharedBuffer);
+    const timeStarted = performance.now();
+    self.postMessage({ action: "started", timeStamp: timeStarted });
 
-    sharedView[0] = 42;
-    console.log("Worker wrote 42 into slot 0");
-    self.postMessage("done");
+    const delay = Math.random() * 300;
+
+    setTimeout(() => {
+        const timeEnded = performance.now();
+        self.postMessage({ action: "finished", timeStamp: timeEnded, timeTaken: timeEnded - timeStarted });
+
+    }, delay);
 };
-
