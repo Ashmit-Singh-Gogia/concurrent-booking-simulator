@@ -1,7 +1,7 @@
 import { attemptBooking } from "../core/booking-engine.js";
 
 self.onmessage = async (event) => {
-    const { seatIndex, sharedBuffer, mode } = event.data;
+    const { seatIndex, sharedBuffer, mode, barrierBuffer, expectedCount } = event.data;
     const seatView = new Int32Array(sharedBuffer);
 
     const report = (action, result) => {
@@ -13,6 +13,7 @@ self.onmessage = async (event) => {
         });
     };
 
-    const outcome = await attemptBooking(seatView, seatIndex, mode, report);
+    const sync = { barrierView: new Int32Array(barrierBuffer), barrierIndex: 0, expectedCount };
+    const outcome = await attemptBooking(seatView, seatIndex, mode, report, sync);
     report("outcome", outcome);
 };

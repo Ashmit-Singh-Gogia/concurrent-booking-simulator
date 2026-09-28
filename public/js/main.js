@@ -6,13 +6,17 @@ import { initEventLog, logEvent } from "./core/event-log.js";
 
 initEventLog(document.getElementById("log"));
 
+const REQUEST_COUNT = 5;
+const barrierBuffer = new SharedArrayBuffer(4);
 
-const configs = [0, 1, 2].map((requestId) => ({
+const configs = Array.from({ length: REQUEST_COUNT }, (_, requestId) => ({
     requestId,
     seatIndex: seatIdToIndex("A1"),
     mode: "unsafe",
     sharedBuffer: getSharedBuffer(),
-    runId: "test-run-1",
+    barrierBuffer,
+    expectedCount: REQUEST_COUNT,
+    runId: "barrier-test",
 }));
 
 spawnWorkers(configs, (event) => {
