@@ -1,12 +1,18 @@
-self.onmessage = (event) => {
-    const { requestId, seatIndex, sharedBuffer } = event.data;
+import { attemptBooking } from "../core/booking-engine.js";
+
+self.onmessage = async (event) => {
+    const { seatIndex, sharedBuffer, mode } = event.data;
     const seatView = new Int32Array(sharedBuffer);
 
-    self.postMessage({
-        requestId,
-        seatIndex,
-        action: "read",
-        result: seatView[seatIndex],
-        timestamp: performance.timeOrigin + performance.now(),
-    });
+    const report = (action, result) => {
+
+        self.postMessage({
+            action,
+            result,
+            timestamp: performance.timeOrigin + performance.now(),
+        });
+    };
+
+    const outcome = await attemptBooking(seatView, seatIndex, mode, report);
+    report("outcome", outcome);
 };
