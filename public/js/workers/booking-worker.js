@@ -7,6 +7,6 @@ self.onmessage = (event) => {
         seatIndex,
         action: "read",
         result: seatView[seatIndex],
-        timeStamp: performance.now(),
+        timestamp: performance.timeOrigin + performance.now(),
     });
 };

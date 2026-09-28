@@ -1,18 +1,14 @@
 import { spawnWorkers } from './core/worker-manager.js';
 import { getSharedBuffer, setSeatState } from './core/shared-state.js';
-import { seatIdToIndex } from './core/seat-model.js';
+import { seatIdToIndex, seatIndexToId } from "./core/seat-model.js";
+import { SEAT_STATE, seatStateName } from "./core/constants.js";
+import { initEventLog, logEvent } from "./core/event-log.js";
 
-const logEl = document.getElementById("log");
-
-function logLine(text) {
-    const li = document.createElement("li");
-    li.textContent = text;
-    logEl.appendChild(li);
-}
+initEventLog(document.getElementById("log"));
 
 
 
-setSeatState(seatIdToIndex("A1"), 2);
+setSeatState(seatIdToIndex("A1"), SEAT_STATE.BOOKED);
 
 const configs = [0, 1, 2].map((requestId) => ({
     requestId,
@@ -23,5 +19,11 @@ const configs = [0, 1, 2].map((requestId) => ({
 }));
 
 spawnWorkers(configs, (event) => {
-    logLine(`Request ${event.requestId} read seat ${event.seatIndex} as ${event.result}`);
+    logEvent({
+        requestId: event.requestId,
+        seatId: seatIndexToId(event.seatIndex),
+        action: event.action,
+        result: seatStateName(event.result),
+        timestamp: event.timestamp,
+    });
 });
