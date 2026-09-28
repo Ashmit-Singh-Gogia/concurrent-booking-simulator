@@ -1,12 +1,12 @@
 self.onmessage = (event) => {
-    const timeStarted = performance.now();
-    self.postMessage({ action: "started", timeStamp: timeStarted });
+    const { requestId, seatIndex, sharedBuffer } = event.data;
+    const seatView = new Int32Array(sharedBuffer);
 
-    const delay = Math.random() * 300;
-
-    setTimeout(() => {
-        const timeEnded = performance.now();
-        self.postMessage({ action: "finished", timeStamp: timeEnded, timeTaken: timeEnded - timeStarted });
-
-    }, delay);
+    self.postMessage({
+        requestId,
+        seatIndex,
+        action: "read",
+        result: seatView[seatIndex],
+        timeStamp: performance.now(),
+    });
 };

@@ -1,15 +1,15 @@
-export function spawnWorkers(count, onEvent) {
+export function spawnWorkers(configs, onEvent) {
     const workers = [];
 
-    for (let workerId = 1; workerId <= count; workerId++) {
-        const worker = new Worker("./js/workers/booking-worker.js", { type: "module" });
-        worker.onmessage = (event) => {
-            onEvent({ workerId, ...event.data });
-        }
-        worker.postMessage({ workerId });
+    configs.forEach((config) => {
+        const worker = new Worker('./js/workers/booking-worker.js');
 
+        worker.onmessage = (event) => {
+            onEvent({ ...config, ...event.data });
+        };
+
+        worker.postMessage(config);
         workers.push(worker);
-    }
+    });
     return workers;
 }
-
