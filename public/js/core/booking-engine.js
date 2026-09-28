@@ -32,5 +32,5 @@ async function attemptUnsafe(seatView, seatIndex, report, sync) {
     // Write
     seatView[seatIndex] = SEAT_STATE.BOOKED;
     report("write", SEAT_STATE.BOOKED);
-    return "Booked";
+    return "BOOKED";
 }
