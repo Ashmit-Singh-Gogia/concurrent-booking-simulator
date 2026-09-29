@@ -16,6 +16,6 @@ self.onmessage = async (event) => {
     const sync = barrierBuffer
         ? { barrierView: new Int32Array(barrierBuffer), barrierIndex: 0, expectedCount }
         : undefined;
-    const outcome = await attemptBooking(seatView, seatIndex, mode, report, sync);
+    const outcome = attemptBooking(seatView, seatIndex, mode, report, sync);
     report("outcome", outcome);
 };

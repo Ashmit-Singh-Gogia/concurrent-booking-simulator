@@ -5,14 +5,10 @@ import { seatStateName } from "../core/constants.js";
 import { logEvent } from "../core/event-log.js";
 import { validateConfig } from "./validate-config.js";
 
-export function runRaceConditionSimulation({ requestCount, selectedSeatIds, mode }, onComplete) {
+export function runIndependentSeatSimulation({ requestCount, selectedSeatIds }, onComplete) {
     const errors = validateConfig({ requestCount, selectedSeatIds });
-    if (errors.length > 0) {
-        onComplete({ errors });
-        return;
-    }
+    if (errors.length > 0) { onComplete({ errors }); return; }
 
-    const barrierBuffer = new SharedArrayBuffer(4);
     const outcomes = [];
     let finishedCount = 0;
 
@@ -21,11 +17,9 @@ export function runRaceConditionSimulation({ requestCount, selectedSeatIds, mode
         return {
             requestId,
             seatIndex: seatIdToIndex(seatId),
-            mode,
+            mode: "fixed",
             sharedBuffer: getSharedBuffer(),
-            barrierBuffer,
-            expectedCount: requestCount,
-            runId: "run",
+            runId: "independent-run",
         };
     });
 
@@ -42,38 +36,22 @@ export function runRaceConditionSimulation({ requestCount, selectedSeatIds, mode
             outcomes.push({ seatId: seatIndexToId(event.seatIndex), outcome: event.result });
             finishedCount++;
             if (finishedCount === requestCount) {
-                onComplete({ metrics: computeMetrics(outcomes, requestCount) });
+                onComplete({ metrics: computeMetrics(outcomes, requestCount, selectedSeatIds) });
             }
         }
     });
 }
 
 
-function computeMetrics(outcomes, requestCount) {
-    const successesBySeat = new Map();
-    let rejectedCount = 0;
+function computeMetrics(outcomes, requestCount, selectedSeatIds) {
+    const perSeat = Object.fromEntries(
+        selectedSeatIds.map((id) => [id, { successes: 0, rejected: 0 }])
+    );
 
     outcomes.forEach(({ seatId, outcome }) => {
-        if (outcome === "BOOKED") {
-            successesBySeat.set(seatId, (successesBySeat.get(seatId) || 0) + 1);
-        } else {
-            rejectedCount++;
-        }
+        if (outcome === "BOOKED") perSeat[seatId].successes++;
+        else perSeat[seatId].rejected++;
     });
 
-    let successfulWrites = 0;
-    let duplicateBookings = 0;
-    successesBySeat.forEach((count) => {
-        successfulWrites += count;
-        if (count > 1) duplicateBookings += count - 1;
-    });
-
-    return {
-        totalRequests: requestCount,
-        successfulWrites,
-        rejectedCount,
-        duplicateBookings,
-        raceDetected: duplicateBookings > 0
-    };
-
+    return { totalRequests: requestCount, perSeat };
 }
