@@ -45,7 +45,9 @@ function attemptFixed(seatView, seatIndex, report, sync) {
 
     if (observed !== SEAT_STATE.AVAILABLE) return "REJECTED";
 
-    waitForGroup(sync.barrierView, sync.barrierIndex, sync.expectedCount);
+    if (sync) {
+        waitForGroup(sync.barrierView, sync.barrierIndex, sync.expectedCount);
+    }
 
     const won = trySetSeatState(seatView, seatIndex, SEAT_STATE.AVAILABLE, SEAT_STATE.BOOKED);
 
