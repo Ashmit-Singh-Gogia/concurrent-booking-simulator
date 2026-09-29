@@ -16,7 +16,8 @@ export function setSeatState(index, newState) {
 }
 
 
-// not working now
-export function trySetSeatState(index, expectedState, newState) {
-    throw new Error("trySetSeatState isn't implemented until Step 6");
+
+export function trySetSeatState(seatView, index, expectedState, newState) {
+    const previous = Atomics.compareExchange(seatView, index, expectedState, newState);
+    return previous === expectedState;    // expected state is 0 
 }

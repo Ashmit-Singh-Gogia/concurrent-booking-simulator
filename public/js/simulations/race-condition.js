@@ -1,7 +1,7 @@
 import { spawnWorkers } from "../core/worker-manager.js";
-import { getSharedBuffer, setSeatState } from "../core/shared-state.js";
+import { getSharedBuffer } from "../core/shared-state.js";
 import { seatIdToIndex, seatIndexToId } from "../core/seat-model.js";
-import { SEAT_STATE, SIMULATION_LIMITS, seatStateName } from "../core/constants.js";
+import { SIMULATION_LIMITS, seatStateName } from "../core/constants.js";
 import { logEvent } from "../core/event-log.js";
 
 
@@ -23,7 +23,7 @@ export function validateConfig({ requestCount, selectedSeatIds }) {
     return errors;
 }
 
-export function runRaceConditionSimulation({ requestCount, selectedSeatIds }, onComplete) {
+export function runRaceConditionSimulation({ requestCount, selectedSeatIds, mode }, onComplete) {
     const errors = validateConfig({ requestCount, selectedSeatIds });
     if (errors.length > 0) {
         onComplete({ errors });
@@ -39,11 +39,11 @@ export function runRaceConditionSimulation({ requestCount, selectedSeatIds }, on
         return {
             requestId,
             seatIndex: seatIdToIndex(seatId),
-            mode: "unsafe",
+            mode,
             sharedBuffer: getSharedBuffer(),
             barrierBuffer,
             expectedCount: requestCount,
-            runId: "unsafe-run",
+            runId: "run",
         };
     });
 
@@ -53,8 +53,9 @@ export function runRaceConditionSimulation({ requestCount, selectedSeatIds }, on
             seatId: seatIndexToId(event.seatIndex),
             action: event.action,
             result: typeof event.result === "number" ? seatStateName(event.result) : event.result,
-            timeStamp: event.timestamp,
+            timestamp: event.timestamp,
         });
+
         if (event.action === "outcome") {
             outcomes.push({ seatId: seatIndexToId(event.seatIndex), outcome: event.result });
             finishedCount++;
@@ -62,16 +63,19 @@ export function runRaceConditionSimulation({ requestCount, selectedSeatIds }, on
                 onComplete({ metrics: computeMetrics(outcomes, requestCount) });
             }
         }
-
     });
 }
 
 
 function computeMetrics(outcomes, requestCount) {
     const successesBySeat = new Map();
+    let rejectedCount = 0;
+
     outcomes.forEach(({ seatId, outcome }) => {
         if (outcome === "BOOKED") {
             successesBySeat.set(seatId, (successesBySeat.get(seatId) || 0) + 1);
+        } else {
+            rejectedCount++;
         }
     });
 
@@ -85,7 +89,9 @@ function computeMetrics(outcomes, requestCount) {
     return {
         totalRequests: requestCount,
         successfulWrites,
+        rejectedCount,
         duplicateBookings,
-        raceDetected: duplicateBookings > 0,
+        raceDetected: duplicateBookings > 0
     };
+
 }
