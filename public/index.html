@@ -9,13 +9,44 @@
 </head>
 
 <body>
-    <h1>Concurrent Booking Simulators</h1>
-    <p>Step 1: shared-memory check</p>
-    <pre id="status"> Waiting for Worker...</pre>
-    <ul id="log"></ul>
+
+    <Section id="landing-page" class="page">Concurrent Booking Simulators >
+        <div class="topbar">
+            <span class="project-name">Concurrent Booking Simulators</span>
+            <button id="nav-to-sim-from-landing">Simulation Page</button>
+        </div>
+
+        <div class="login-box">
+            <h2>Login/Signup</h2>
+            <input id="login-username" placeholder="User Name" />
+            <input id="login-password" type="password" placeholder="Password" />
+            <button id="login-submit">Login</button>
+        </div>
+
+    </Section>
+
+    <Section id="user-ui-page" class="page hidden">
+        <div class="topbar">
+            <span class="project-name">Concurrent Booking Simulators</span>
+            <button id="reset-from-user-ui">Reset Simulations</button>
+            <button id="nav-to-sim-from-user-ui">Simulation Page</button>
+            <button id="logout">Log Out</button>
+        </div>
+        
+        <p>(seat grid goes here next chunk)</p>
+    </Section>
+
+    <Section id="simulation-page" class="page hidden">
+        <div class="topbar">
+            <span class="project-name">Concurrent Booking Simulators</span>
+            <button id="nav-to-landing-from-sim">Landing Page</button>
+            <button id="nav-to-user-ui-from-sim">User Interface</button>
+        </div>
+
+        <p>(simulation content goes here)</p>
+    </Section>
 
     <script type="module" src="./js/main.js"></script>
-
 </body>
 
 </html>

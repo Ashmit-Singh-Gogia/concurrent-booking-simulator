@@ -10,3 +10,21 @@ body {
     padding: 0.75rem;
     border-radius: 4px;
 }
+
+.hidden { display: none; }
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #eee;
+}
+
+.login-box {
+  max-width: 300px;
+  margin: 3rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
