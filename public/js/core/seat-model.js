@@ -1,5 +1,5 @@
-const ROWS = ['A', 'B', 'C', 'D', 'E'];
-const SEATS_PER_ROW = 10;
+export const ROWS = ['A', 'B', 'C', 'D', 'E'];
+export const SEATS_PER_ROW = 10;
 
 // in order: ["A1", "A2", ..., "A10", "B1", ..., "E10"]
 const seatIds = [];

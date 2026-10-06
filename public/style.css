@@ -1,17 +1,19 @@
 body {
-    font-family: system-ui, sans-serif;
-    max-width: 640px;
-    margin: 2rem auto;
-    padding: 0 1rem;
+  font-family: system-ui, sans-serif;
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
 #status {
-    background: #f2f2f2;
-    padding: 0.75rem;
-    border-radius: 4px;
+  background: #f2f2f2;
+  padding: 0.75rem;
+  border-radius: 4px;
 }
 
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 
 .topbar {
   display: flex;
@@ -27,4 +29,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.seat-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.row-label {
+  width: 20px;
+  font-weight: bold;
+}
+
+.seat {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #999;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.seat-available {
+  background: #cfe8cf;
+}
+
+.seat-locked {
+  background: #ffe6a8;
+}
+
+.seat-booked {
+  background: #f3b3b3;
 }
