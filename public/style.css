@@ -63,3 +63,13 @@ body {
 .seat-booked {
   background: #f3b3b3;
 }
+
+.seat-selected {
+  outline: 3px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
