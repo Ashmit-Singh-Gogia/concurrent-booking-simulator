@@ -1,4 +1,5 @@
 import { SEAT_COUNT } from "./seat-model.js";
+import { SEAT_STATE } from "./constants.js";
 
 const BYTES_PER_SEAT = 4;
 const buffer = new SharedArrayBuffer(SEAT_COUNT * BYTES_PER_SEAT);
@@ -23,4 +24,8 @@ export function getSeatView() {
 export function trySetSeatState(seatView, index, expectedState, newState) {
     const previous = Atomics.compareExchange(seatView, index, expectedState, newState);
     return previous === expectedState;    // expected state is 0 
+}
+
+export function resetAllSeats() {
+    seat_view.fill(SEAT_STATE.AVAILABLE);
 }

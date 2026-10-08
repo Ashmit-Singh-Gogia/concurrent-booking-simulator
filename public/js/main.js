@@ -1,16 +1,20 @@
 import { showPage } from "./ui/page-router.js";
 import { renderSeatGrid, refreshSeatDisplay } from "./ui/seat-grid.js";
 import { toggleSeatSelection, getSelectedSeats, clearSelection } from "./ui/seat-selection.js";
-import { getSeatState, getSeatView } from "./core/shared-state.js";
+import { getSeatState, getSeatView, resetAllSeats } from "./core/shared-state.js";
 import { seatIdToIndex } from "./core/seat-model.js";
 import { SEAT_STATE, seatStateName } from "./core/constants.js";
 import { attemptBooking } from "./core/booking-engine.js";
+import { initEventLog, logEvent, clearEventLog } from "./core/event-log.js";
 
 
 const seatGridEl = document.getElementById("seat-grid");
 const confirmBtn = document.getElementById("confirm-selection");
 const popupEl = document.getElementById("booking-popup");
 const popupSeatListEl = document.getElementById("popup-seat-list");
+
+initEventLog(document.getElementById("log")); // initialize the event log
+
 
 function updateConfirmButton() {
   confirmBtn.disabled = getSelectedSeats().length == 0;
@@ -30,7 +34,7 @@ function handleSeatClick(seatId) {
 }
 
 
-function handleConfirmBooking() {
+async function handleConfirmBooking() {
   const seatIds = getSelectedSeats();
   const seatView = getSeatView();
   const rejectedSeats = [];
@@ -38,11 +42,16 @@ function handleConfirmBooking() {
   for (const seatId of seatIds) {
     const seatIndex = seatIdToIndex(seatId);
     const report = (action, result) => {
-      console.log(`[booking] ${seatId} ${action} -> ${typeof result === "number" ? seatStateName(result) : result}`);
-      // this is where we connect the event log
+      logEvent({
+        requestId: "you",
+        seatId,
+        action,
+        result: typeof result === "number" ? seatStateName(result) : result,
+        timestamp: performance.timeOrigin + performance.now(),
+      });
     };
 
-    const outcome = attemptBooking(seatView, seatIndex, "fixed", report);
+    const outcome = await attemptBooking(seatView, seatIndex, "fixed", report);
     report("outcome", outcome);
     if (outcome === "REJECTED") rejectedSeats.push(seatId);
   }
@@ -64,8 +73,13 @@ function handleRejectBooking() {
   popupEl.classList.add("hidden");
 }
 
-
-
+function resetEverything() {
+  resetAllSeats();
+  clearEventLog();
+  clearSelection();
+  refreshSeatDisplay(seatGridEl);
+  updateConfirmButton();
+}
 
 renderSeatGrid(seatGridEl, handleSeatClick);
 updateConfirmButton();
@@ -84,6 +98,10 @@ document.getElementById("logout").onclick = () => {
   document.getElementById("login-password").value = "";
   showPage("landing-page");
 };
+
+document.getElementById("reset-from-user-ui").onclick = resetEverything;
+document.getElementById("reset-from-sim").onclick = resetEverything;
+
 document.getElementById("confirm-booking-btn").onclick = handleConfirmBooking;
 document.getElementById("reject-booking-btn").onclick = handleRejectBooking;
 
