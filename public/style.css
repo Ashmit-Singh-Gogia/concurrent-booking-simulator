@@ -73,3 +73,42 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  align-items: center;
+  justify-content: center;
+}
+
+.popup:not(.hidden) {
+  display: flex;
+}
+
+.popup-box {
+  background: #fff;
+  color: #111;
+  padding: 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 220px;
+}
+
+.btn-confirm {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.btn-reject {
+  background: #e57373;
+  color: #fff;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+}

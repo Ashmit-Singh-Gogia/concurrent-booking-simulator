@@ -15,6 +15,9 @@ export function setSeatState(index, newState) {
     seat_view[index] = newState;
 }
 
+export function getSeatView() {
+    return seat_view; // this module's own view over the one real shared buffer
+}
 
 
 export function trySetSeatState(seatView, index, expectedState, newState) {
