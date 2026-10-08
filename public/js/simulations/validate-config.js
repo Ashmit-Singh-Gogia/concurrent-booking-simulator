@@ -1,4 +1,5 @@
 import { SIMULATION_LIMITS } from "../core/constants.js";
+import { seatIdToIndex } from "../core/seat-model.js";
 
 export function validateConfig({ requestCount, selectedSeatIds }) {
     const errors = [];
@@ -11,8 +12,14 @@ export function validateConfig({ requestCount, selectedSeatIds }) {
 
     if (!selectedSeatIds || selectedSeatIds.length === 0) {
         errors.push("Select at least one seat.");
-    } else if (new Set(selectedSeatIds).size !== selectedSeatIds.length) {
-        errors.push("Duplicate seats aren't allowed.");
+    } else {
+        if (new Set(selectedSeatIds).size !== selectedSeatIds.length) {
+            errors.push("Duplicate seats aren't allowed.");
+        }
+        const unknown = selectedSeatIds.filter((id) => seatIdToIndex(id) === undefined);
+        if (unknown.length > 0) {
+            errors.push(`Unknown seat(s): ${unknown.join(", ")}.`);
+        }
     }
 
     return errors;

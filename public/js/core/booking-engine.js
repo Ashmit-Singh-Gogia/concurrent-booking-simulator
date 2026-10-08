@@ -10,11 +10,13 @@ const sleep = (ms) => {
 };
 
 export function attemptBooking(seatView, seatIndex, mode, report, sync) {
-    if (mode == "unsafe") {
-        return attemptUnsafe(seatView, seatIndex, report, sync);
-    }
+    if (mode == "unsafe") return attemptUnsafe(seatView, seatIndex, report, sync);
     if (mode === "fixed") return attemptFixed(seatView, seatIndex, report, sync);
     throw new Error(`Booking mode ${mode} is not implemented yet`);
+}
+
+function arriveAtBarrier(sync) {
+    if (sync) waitForGroup(sync.barrierView, sync.barrierIndex, sync.expectedCount);
 }
 
 function attemptUnsafe(seatView, seatIndex, report, sync) {
@@ -27,10 +29,10 @@ function attemptUnsafe(seatView, seatIndex, report, sync) {
         return "REJECTED";
     }
 
-    // forcefully causing race condition 
+    // forcefully causing race condition
     // by making threads wait for the final thread
     //  to read the seat state so it guarantees race condition
-    waitForGroup(sync.barrierView, sync.barrierIndex, sync.expectedCount);
+    arriveAtBarrier(sync);
 
     // Write
     seatView[seatIndex] = SEAT_STATE.BOOKED;

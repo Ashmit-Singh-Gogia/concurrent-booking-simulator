@@ -45,13 +45,27 @@
         </div>
 
         <div class="sim-layout">
+
             <div class="log-panel">
                 <h3>Logs</h3>
                 <ul id="log"></ul>
             </div>
+
             <div class="sim-controls">
                 <button id="reset-from-sim">Reset Simulations</button>
+
+                <label>Request Count
+                    <input id="sim-request-count" type="number" value="30" min="1" />
+                </label>
+                <label>Seats (comma-separated, e.g. A1,A2)
+                    <input id="sim-seat-ids" type="text" value="A1" />
+                </label>
+
+                <button id="run-unsafe-sim">Failed Race Condition Simulation</button>
+                <button id="run-fixed-sim">Success Handle Race Conditions Simulation</button>
+                <button id="run-independent-sim">Independent Seat Concurrency Simulation</button>
             </div>
+
         </div>
 
     </Section>
