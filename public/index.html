@@ -10,10 +10,17 @@
 <body>
 
     <h1>Unsafe Simulation</h1>
-    <label for="unsafe-sim-numberOfWorkers">Number of Workers</label>
+    <label for="unsafe-sim-numberOfWorkers">Number of Requests</label>
     <input type="number" id="unsafe-sim-numberOfWorkers" value="10">
     <input type="text" id="unsafe-sim-seat" value="A1">
     <button id="simbtn-unsafe">Unsafe Simulation</button>
+
+
+    <h1>Safe Booking Simulation (No Locks)</h1>
+    <label for="safe-sim-numberOfWorkers">Number of Requests</label>
+    <input type="number" id="safe-sim-numberOfWorkers" value="10">
+    <input type="text" id="safe-sim-seat" value="A1">
+    <button id="simbtn-safe">Safe Booking</button>
 
 
     <script type="module" src="main.js"></script>
