@@ -1,11 +1,14 @@
-import { ERRORS, MAX_REQUESTS } from "./constants/constants.js";
+import { ERRORS, MAX_REQUESTS, MAX_SEAT_SELECTION } from "./constants/constants.js";
 import { getSeatView } from "./shared_state/shared_state.js"
 import { isValidSeat } from "./common/validateSeat.js";
 import { seatToIndex } from "./seat_model/seat_model.js";
+import { getArrayOfSeats, getSeatIndices } from "./common/parseSeats.js"
+
 
 // dom elements
 document.getElementById("simbtn-unsafe").addEventListener("click", runUnsafeSimulation);
 document.getElementById("simbtn-safe").addEventListener("click", runSafeSimulation);
+document.getElementById("simbtn-global").addEventListener("click", runGlobalLockSimulation);
 
 
 
@@ -141,6 +144,100 @@ function runSafeSimulation() {
 
         }
     }
+}
+
+function runGlobalLockSimulation() {
+    const inputElement = document.getElementById("global-sim-numberOfWorkers");
+    const count = parseInt(inputElement.value, 10) || 5    // seat value taken 
+
+    if (count > MAX_REQUESTS) {
+        throw new Error(ERRORS.TOO_MANY_REQUESTS);
+    }
+
+    const seat = document.getElementById("global-sim-seat").value;
+    // Distribute the seat into an array of seats
+
+    const seats = getArrayOfSeats(seat);
+    // Validate all the seats
+    for (let i = 0; i < seats.length; i++) {
+        if (!isValidSeat(seats[i])) {
+            throw new Error(ERRORS.INVALID_SEAT);
+        }
+    }
+
+    // Might sort seats array here
+
+    if (seats.length > MAX_SEAT_SELECTION) {
+        throw new Error(ERRORS.TOO_MANY_SEATS);
+    }
 
 
+    const globalSharedBufferLock = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    const globalLockView = new Int32Array(globalSharedBufferLock);
+
+    const barrierSab = new SharedArrayBuffer(4);
+    const barrierView = new Int32Array(barrierSab);
+
+    const workers = [];
+    const chunkSize = Math.floor(seats.length / count); // Number of seats / Count Of workers
+    const remainingSeats = seats.length % count; // Number of seats % Count Of Workers -> Given to 1sr worker 
+    let startIdx = 0;
+
+    let readyCount = 0, bookedCount = 0, alreadyBookedCount = 0, doneCount = 0;
+    let notified = false;
+
+    for (let i = 0; i < count; i++) {
+        const worker = new Worker("./workers/global_worker.js");
+        workers.push(worker);
+        let allotedSeats = [];
+
+        if (i === 0) {
+            allotedSeats = seats.slice(startIdx, startIdx + chunkSize + remainingSeats);
+            startIdx += chunkSize + remainingSeats;
+        } else {
+            allotedSeats = seats.slice(startIdx, startIdx + chunkSize);
+            startIdx += chunkSize;
+        }
+        const allotedSeatIndices = getSeatIndices(allotedSeats);
+        const workerInfo = {
+            workerId: i,
+            targetSeats: allotedSeats,      // direct seats are sent -> A1 , E3 , etc,
+            targetSeatIndices: allotedSeatIndices,  // indices of the seats are sent
+            seatView: getSeatView(),
+            globalLockView: globalLockView,
+            barrierView: barrierView,
+        }
+
+        worker.postMessage(workerInfo);
+
+        worker.onmessage = (ev) => {
+            const { status, workerId, seat } = ev.data;
+
+            if (status === 'READY') {
+                readyCount++;
+            } else if (status === 'BOOKED') {
+                bookedCount++;
+            } else if (status === 'ALREADY_BOOKED') {
+                alreadyBookedCount++;
+            } else if (status === 'DONE') {
+                doneCount++;
+            }
+
+            // Release barrier once all workers are ready
+            if (readyCount === count && !notified) {
+                notified = true;
+                barrierView[0] = 10;
+                Atomics.notify(barrierView, 0, count);
+                console.log("Global Lock Sim: All workers ready — releasing barrier");
+            }
+
+            // All workers finished processing their seats
+            if (doneCount === count) {
+                console.log(`Global Lock Sim → Workers: ${count} | Seats: ${seats.length} | Booked: ${bookedCount} | Already Booked: ${alreadyBookedCount}`);
+                for (const w of workers) {
+                    w.terminate();
+                }
+            }
+        }
+    }
 }
