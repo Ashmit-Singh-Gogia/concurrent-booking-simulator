@@ -1,36 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Concurrency Lab</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-
-    <h1>Unsafe Simulation</h1>
-    <label for="unsafe-sim-numberOfWorkers">Number of Requests</label>
-    <input type="number" id="unsafe-sim-numberOfWorkers" value="10">
-    <input type="text" id="unsafe-sim-seat" value="A1">
-    <button id="simbtn-unsafe">Unsafe Simulation</button>
-
-
-    <h1>Safe Booking Simulation (No Locks)</h1>
-    <label for="safe-sim-numberOfWorkers">Number of Requests</label>
-    <input type="number" id="safe-sim-numberOfWorkers" value="10">
-    <input type="text" id="safe-sim-seat" value="A1">
-    <button id="simbtn-safe">Safe Booking</button>
-
-
-    <h1>Safe Booking Simulation (Global Lock)</h1>
-    <label for="global-sim-numberOfWorkers">Number of Requests</label>
-    <input type="number" id="global-sim-numberOfWorkers" value="10">
-    <input type="text" id="global-sim-seat" value="A1">
-    <button id="simbtn-global">Safe Booking</button>
-
-
-    <script type="module" src="main.js"></script>
+  <header class="topbar"><div class="wrap nav-inner"><a class="brand" href="index.html"><span class="brand-mark">↯</span>Concurrency Lab</a><nav><a class="active" href="index.html">Home</a><a href="simulations/unsafe.html">Unsafe</a><a href="simulations/atomic.html">Atomic</a><a href="simulations/global-lock.html">Global lock</a><a href="simulations/seat-lock.html">Per-seat lock</a><a class="nav-compare" href="compare.html">Compare all</a></nav></div></header>
+  <main>
+    <section class="hero wrap"><div class="hero-copy"><p class="eyebrow">A friendly playground for parallel code</p><h1>See concurrency<br><em>come alive.</em></h1><p class="hero-text">Four simple experiments that turn invisible computer timing into something you can see, understand, and explore.</p><div class="hero-actions"><a class="button primary" href="simulations/unsafe.html">Start exploring <span>→</span></a><a class="text-link" href="compare.html">See the comparison <span>↗</span></a></div></div><div class="hero-orbit" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core">01</div><span class="dot dot-one"></span><span class="dot dot-two"></span><span class="dot dot-three"></span></div></section>
+    <section class="wrap intro-grid"><div><p class="eyebrow">The big idea</p><h2>When many workers<br>move at once, timing matters.</h2></div><p class="muted">Think of every worker as a customer trying to book a cinema seat. The simulations show what happens when everyone checks and changes the same shared information at the same time.</p></section>
+    <section class="wrap simulation-cards" aria-label="Simulation list">
+      <a class="simulation-card accent-red" href="simulations/unsafe.html"><span class="number">01</span><span class="card-icon">⚡</span><h3>Unsafe booking</h3><p>See how a race condition lets multiple workers believe they won.</p><span class="card-link">Open simulation →</span></a>
+      <a class="simulation-card accent-cyan" href="simulations/atomic.html"><span class="number">02</span><span class="card-icon">◈</span><h3>Atomic compare &amp; exchange</h3><p>Discover the tiny indivisible move that makes a safe winner.</p><span class="card-link">Open simulation →</span></a>
+      <a class="simulation-card accent-violet" href="simulations/global-lock.html"><span class="number">03</span><span class="card-icon">♙</span><h3>Global lock</h3><p>One shared key keeps everyone safe, but creates one long queue.</p><span class="card-link">Open simulation →</span></a>
+      <a class="simulation-card accent-green" href="simulations/seat-lock.html"><span class="number">04</span><span class="card-icon">⌾</span><h3>Per-seat lock</h3><p>Give each seat its own key and let independent work happen together.</p><span class="card-link">Open simulation →</span></a>
+    </section>
+    <section class="wrap home-callout"><div><p class="eyebrow orange">The grand experiment</p><h2>Want to see them<br>side by side?</h2></div><a class="button primary" href="compare.html">Open comparison lab →</a></section>
+  </main>
+  <footer class="footer"><div class="wrap"><span class="brand"><span class="brand-mark">↯</span>Concurrency Lab</span><span>Learn by watching the race.</span></div></footer>
 </body>
-
 </html>

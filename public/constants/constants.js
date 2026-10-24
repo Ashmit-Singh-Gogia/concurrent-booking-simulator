@@ -4,7 +4,7 @@ export const SEAT_STATE = {
 }
 export const {
     ROWS = 10, COLS = 10,
-    MAX_REQUESTS = 30, MAX_SEAT_SELECTION = 5
+    MAX_REQUESTS = 100, MAX_SEAT_SELECTION = 20
 } = {};
 
 

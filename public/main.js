@@ -5,16 +5,89 @@ import { seatToIndex } from "./seat_model/seat_model.js";
 import { getArrayOfSeats, getSeatIndices } from "./common/parseSeats.js"
 
 
-// dom elements
-document.getElementById("simbtn-unsafe").addEventListener("click", runUnsafeSimulation);
-document.getElementById("simbtn-safe").addEventListener("click", runSafeSimulation);
-document.getElementById("simbtn-global").addEventListener("click", runGlobalLockSimulation);
+const workerRoot = location.pathname.includes("/simulations/") ? "../workers/" : "./workers/";
+let simulationStartedAt = 0;
+
+// Each simulation page keeps the original button IDs. Missing buttons are ignored
+// so the landing and comparison pages can load this module safely.
+document.querySelectorAll("button[type='reset']").forEach(button => {
+    button.addEventListener("click", () => {
+        getSeatView().fill(0);
+        clearSimulationView();
+    });
+});
+
+function addLog(message, type = "Worker") {
+    const log = document.querySelector(".log-list");
+    if (!log) return;
+    const row = document.createElement("p");
+    const elapsed = simulationStartedAt ? (performance.now() - simulationStartedAt).toFixed(3) : "0.000";
+    row.innerHTML = `<time>+${elapsed} ms</time><b>${type}</b><span>${message}</span>`;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+}
+
+function setMetric(label, value) {
+    document.querySelectorAll(".metric").forEach(metric => {
+        if (metric.querySelector("small")?.textContent.toLowerCase().includes(label.toLowerCase())) {
+            metric.querySelector("b").textContent = value;
+        }
+    });
+}
+
+function markSeat(seat, className) {
+    document.querySelectorAll(".seat-map span, .seat-table td").forEach(cell => {
+        if (cell.textContent.trim().toUpperCase() === seat.toUpperCase()) {
+            cell.classList.remove("conflict", "active");
+            if (className === "booked") cell.classList.add("booked");
+        }
+    });
+}
+
+function recordWorkerEvent(data) {
+    const worker = data.workerId === undefined ? "Worker" : `Worker ${data.workerId}`;
+    if (data.status === "READY") {
+        addLog(`${worker} is ready${data.seat ? ` for seat ${data.seat}` : ""}.`, "Worker");
+    } else if (data.status === "BOOKED") {
+        markSeat(data.seat, "booked");
+        addLog(`${worker} booked seat ${data.seat} successfully ✅`, "Worker");
+    } else if (data.status === "ALREADY_BOOKED") {
+        addLog(`${worker} lost the race — seat ${data.seat} was already booked ❌`, "Worker");
+    } else if (data.status === "FAILED") {
+        addLog(`${worker} could not book seat ${data.seat} — seat already booked ❌`, "Worker");
+    } else if (data.status === "DONE") {
+        addLog(`${worker} finished its assigned work.`, "Worker");
+    }
+}
+
+function finishView(values) {
+    Object.entries(values).forEach(([label, value]) => setMetric(label, value));
+    document.querySelector(".status-pill")?.classList.replace("waiting", "complete");
+    const status = document.querySelector(".status-pill");
+    if (status) status.textContent = "Completed";
+    addLog("Simulation finished.", "Result");
+}
+
+function clearSimulationView() {
+    document.querySelectorAll(".seat-map span, .seat-table td").forEach(cell => cell.classList.remove("booked", "conflict", "active"));
+    const log = document.querySelector(".log-list");
+    if (log) log.innerHTML = "<p><time>—</time><b>System</b><span>Ready for a new run.</span></p>";
+    document.querySelectorAll(".metric b").forEach(value => value.textContent = "—");
+}
+
+addLog("Simulation ready. Enter inputs and run.", "System");
+
+document.getElementById("simbtn-unsafe")?.addEventListener("click", runUnsafeSimulation);
+document.getElementById("simbtn-safe")?.addEventListener("click", runSafeSimulation);
+document.getElementById("simbtn-global")?.addEventListener("click", runGlobalLockSimulation);
 
 
 
 
 // functions calling workers
 function runUnsafeSimulation() {
+    simulationStartedAt = performance.now();
+    addLog("Starting unsafe simulation.", "System");
     const inputElement = document.getElementById("unsafe-sim-numberOfWorkers")
     // seat value taken 
     const seat = document.getElementById("unsafe-sim-seat").value;
@@ -46,13 +119,14 @@ function runUnsafeSimulation() {
             seatView: getSeatView(),
             barrierView: barrierView,
         }
-        const worker = new Worker("./workers/unsafe_worker.js");
+        const worker = new Worker(`${workerRoot}unsafe_worker.js`);
 
         workers.push(worker);
         worker.postMessage(workerInfo)
 
         worker.onmessage = (ev) => {
             const { status, workerId } = ev.data;
+            recordWorkerEvent(ev.data);
             // every time a worker is ready it sends a message and is caught here
             if (status === 'READY') {
                 counterOfReadyWorkers++;
@@ -66,10 +140,12 @@ function runUnsafeSimulation() {
                 notified = true;
                 barrierView[0] = 10; // changed value
                 Atomics.notify(barrierView, 0, count);
+                addLog(`All ${count} workers are ready — releasing the barrier.`, "System");
                 console.log("Notified all sleeping workers: ")
             }
             if (BookedSeats + countOfFailedWorkers === count) {
                 console.log(`Final Results : Total Requests : ${count} , Total Successfull Bookings : ${BookedSeats} , Duplicate Bookings : ${BookedSeats - 1 >= 0 ? BookedSeats - 1 : 0},  SEAT: ${seat} , Failed Requests: ${count - BookedSeats}`);
+                finishView({ "Booked seats": BookedSeats, "Duplicates": BookedSeats - 1 >= 0 ? BookedSeats - 1 : 0, "Failed requests": count - BookedSeats, "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms` });
                 for (const w of workers) {
                     w.terminate();
                 }
@@ -81,6 +157,8 @@ function runUnsafeSimulation() {
 
 // Safe simulations without locks using Atomic.CompareExhange
 function runSafeSimulation() {
+    simulationStartedAt = performance.now();
+    addLog("Starting atomic compare-and-exchange simulation.", "System");
     const inputElement = document.getElementById("safe-sim-numberOfWorkers");
     // seat value taken 
     const seat = document.getElementById("safe-sim-seat").value;
@@ -111,13 +189,14 @@ function runSafeSimulation() {
             seatView: getSeatView(),
             barrierView: barrierView,
         }
-        const worker = new Worker("./workers/safe_worker.js");
+        const worker = new Worker(`${workerRoot}safe_worker.js`);
 
         workers.push(worker);
         worker.postMessage(workerInfo)
 
         worker.onmessage = (ev) => {
             const { status, workerId } = ev.data;
+            recordWorkerEvent(ev.data);
             // every time a worker is ready it sends a message and is caught here
             if (status === 'READY') {
                 counterOfReadyWorkers++;
@@ -133,10 +212,12 @@ function runSafeSimulation() {
                 notified = true;
                 barrierView[0] = 10; // changed value
                 Atomics.notify(barrierView, 0, count);
+                addLog(`All ${count} workers are ready — releasing the barrier.`, "System");
                 console.log("Notified all sleeping workers: ")
             }
             if (BookedSeats + raceLostWorkers + countOfFailedWorkers === count) {
                 console.log(`Requests: ${count} | Successful: ${BookedSeats} | Race Lost: ${raceLostWorkers} | Duplicates: 0`);
+                finishView({ "Booked seats": BookedSeats, "Race losses": raceLostWorkers, "Duplicates": 0, "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms` });
                 for (const w of workers) {
                     w.terminate();
                 }
@@ -147,6 +228,8 @@ function runSafeSimulation() {
 }
 
 function runGlobalLockSimulation() {
+    simulationStartedAt = performance.now();
+    addLog("Starting global-lock simulation.", "System");
     const inputElement = document.getElementById("global-sim-numberOfWorkers");
     const count = parseInt(inputElement.value, 10) || 5    // seat value taken 
 
@@ -187,7 +270,7 @@ function runGlobalLockSimulation() {
     let notified = false;
 
     for (let i = 0; i < count; i++) {
-        const worker = new Worker("./workers/global_worker.js");
+        const worker = new Worker(`${workerRoot}global_worker.js`);
         workers.push(worker);
         let allotedSeats = [];
 
@@ -212,6 +295,7 @@ function runGlobalLockSimulation() {
 
         worker.onmessage = (ev) => {
             const { status, workerId, seat } = ev.data;
+            recordWorkerEvent(ev.data);
 
             if (status === 'READY') {
                 readyCount++;
@@ -228,12 +312,14 @@ function runGlobalLockSimulation() {
                 notified = true;
                 barrierView[0] = 10;
                 Atomics.notify(barrierView, 0, count);
+                addLog(`All ${count} workers are ready — releasing the barrier.`, "System");
                 console.log("Global Lock Sim: All workers ready — releasing barrier");
             }
 
             // All workers finished processing their seats
             if (doneCount === count) {
                 console.log(`Global Lock Sim → Workers: ${count} | Seats: ${seats.length} | Booked: ${bookedCount} | Already Booked: ${alreadyBookedCount}`);
+                finishView({ "Booked seats": bookedCount, "Already booked": alreadyBookedCount, "Workers done": doneCount, "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms` });
                 for (const w of workers) {
                     w.terminate();
                 }
