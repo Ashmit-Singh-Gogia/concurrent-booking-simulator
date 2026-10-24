@@ -17,6 +17,10 @@ onmessage = (ev) => {
             Atomics.wait(globalLockView, 0, 1);
         }
 
+        // simulated fake expensive work to see some difference in all sim ( This code is in all simulations so its not rigged)
+        let sum = 0;
+        for (let k = 0; k < 10000000; k++) sum += k;
+
         // Critical section — only one worker can be here at a time
         if (seatView[seatIdx] === 0) {
             seatView[seatIdx] = 1;

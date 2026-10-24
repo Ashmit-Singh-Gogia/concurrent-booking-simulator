@@ -15,12 +15,12 @@ onmessage = (ev) => {
     for (let i = 0; i < targetSeatIndices.length; i++) {
         const seatIdx = targetSeatIndices[i];
         const seatName = targetSeats[i];
+        // simulated fake expensive work to see some difference in all sim ( This code is in all simulations so its not rigged)
+        let sum = 0;
+        for (let k = 0; k < 10000000; k++) sum += k;
+
 
         if (seatView[seatIdx] === 0) {
-            console.log("Putting Some write delay with logs ");
-            console.log("Putting Some write delay with logs ");
-            console.log("Putting Some write delay with logs ");
-            console.log("Putting Some write delay with logs ");
             seatView[seatIdx] = 1;  // race window: another worker can slip in here
             console.log(`Worker ${workerId}: Booked seat ${seatName} ✅`);
             postMessage({ status: 'BOOKED', workerId, seat: seatName });

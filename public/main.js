@@ -164,22 +164,17 @@ function runGlobalLockSimulation() {
     }
 
     const seat = document.getElementById("global-sim-seat").value;
-    // Distribute the seat into an array of seats
 
     const seats = getArrayOfSeats(seat);
-    // Validate all the seats
     for (let i = 0; i < seats.length; i++) {
         if (!isValidSeat(seats[i])) {
             throw new Error(ERRORS.INVALID_SEAT);
         }
     }
 
-    // Might sort seats array here
-
     if (seats.length > MAX_SEAT_SELECTION) {
         throw new Error(ERRORS.TOO_MANY_SEATS);
     }
-
 
     const globalSharedBufferLock = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
     const globalLockView = new Int32Array(globalSharedBufferLock);
@@ -188,9 +183,6 @@ function runGlobalLockSimulation() {
     const barrierView = new Int32Array(barrierSab);
 
     const workers = [];
-    const chunkSize = Math.floor(seats.length / count); // Number of seats / Count Of workers
-    const remainingSeats = seats.length % count; // Number of seats % Count Of Workers -> Given to 1sr worker 
-    let startIdx = 0;
 
     let readyCount = 0, bookedCount = 0, alreadyBookedCount = 0, doneCount = 0;
     let notified = false;
@@ -198,20 +190,12 @@ function runGlobalLockSimulation() {
     for (let i = 0; i < count; i++) {
         const worker = new Worker(`${workerRoot}global_worker.js`);
         workers.push(worker);
-        let allotedSeats = [];
 
-        if (i === 0) {
-            allotedSeats = seats.slice(startIdx, startIdx + chunkSize + remainingSeats);
-            startIdx += chunkSize + remainingSeats;
-        } else {
-            allotedSeats = seats.slice(startIdx, startIdx + chunkSize);
-            startIdx += chunkSize;
-        }
-        const allotedSeatIndices = getSeatIndices(allotedSeats);
+        // Full seats array to every worker — they all race, global lock serializes access
         const workerInfo = {
             workerId: i,
-            targetSeats: allotedSeats,      // direct seats are sent -> A1 , E3 , etc,
-            targetSeatIndices: allotedSeatIndices,  // indices of the seats are sent
+            targetSeats: seats,
+            targetSeatIndices: getSeatIndices(seats),
             seatView: getSeatView(),
             globalLockView: globalLockView,
             barrierView: barrierView,

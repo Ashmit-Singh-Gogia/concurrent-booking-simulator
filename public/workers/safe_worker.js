@@ -10,6 +10,11 @@ onmessage = (ev) => {
         const seatIdx = targetSeatIndices[i];
         const seatName = targetSeats[i];
 
+
+        // simulated fake expensive work to see some difference in all sim ( This code is in all simulations so its not rigged)
+        let sum = 0;
+        for (let k = 0; k < 10000000; k++) sum += k;
+
         // Atomic compare-and-exchange: only one worker can swap 0→1
         const result = Atomics.compareExchange(seatView, seatIdx, 0, 1);
 
