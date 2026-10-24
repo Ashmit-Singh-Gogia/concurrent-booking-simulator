@@ -1,35 +1,33 @@
 
 // when main calls the worker
 onmessage = (ev) => {
-    const workerInfo = ev.data
+    // const workerInfo = ev.data
+    const { seatView, targetSeatIndices, targetSeats, barrierView, workerId } = ev.data;
+
+    // Signal ready to main thread
+    postMessage({ status: 'READY', workerId });
 
     //I need to read the seat state
-    const seatView = workerInfo.seatView, targetSeat = workerInfo.targetSeat, seat = workerInfo.seat;
 
-    if (seatView[targetSeat] == 0) {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is AVAILABLE❤️`);
-        postMessage({
-            status: "READY",
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-    } else {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is NOT AVAILABLE❌✋`);
-        postMessage({
-            status: "FAILED",
-            reason: 'ALREADY_BOOKED',
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-        return;
+
+    Atomics.wait(barrierView, 0, 0);
+
+    for (let i = 0; i < targetSeatIndices.length; i++) {
+        const seatIdx = targetSeatIndices[i];
+        const seatName = targetSeats[i];
+
+        if (seatView[seatIdx] === 0) {
+            console.log("Putting Some write delay with logs ");
+            console.log("Putting Some write delay with logs ");
+            console.log("Putting Some write delay with logs ");
+            console.log("Putting Some write delay with logs ");
+            seatView[seatIdx] = 1;  // race window: another worker can slip in here
+            console.log(`Worker ${workerId}: Booked seat ${seatName} ✅`);
+            postMessage({ status: 'BOOKED', workerId, seat: seatName });
+        } else {
+            console.log(`Worker ${workerId}: Seat ${seatName} already taken ❌`);
+            postMessage({ status: 'ALREADY_BOOKED', workerId, seat: seatName });
+        }
     }
-
-    Atomics.wait(workerInfo.barrierView, 0, 0);
-    seatView[targetSeat] = 1;
-    console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is BOOKED ✅`);
-    postMessage({
-        status: "BOOKED",
-        seat: seat,
-        workerId: workerInfo.workerId,
-    });
+    postMessage({ status: 'DONE', workerId });  // signal worker finished
 }
