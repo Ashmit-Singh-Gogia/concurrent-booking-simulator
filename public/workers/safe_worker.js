@@ -1,45 +1,28 @@
 onmessage = (ev) => {
-    const workerInfo = ev.data
+    const { seatView, targetSeatIndices, targetSeats, barrierView, workerId } = ev.data;
 
-    //I need to read the seat state
-    const seatView = workerInfo.seatView, targetSeat = workerInfo.targetSeat, seat = workerInfo.seat;
+    // Signal ready
+    postMessage({ status: 'READY', workerId });
 
-    if (seatView[targetSeat] == 0) {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is AVAILABLE❤️`);
-        postMessage({
-            status: "READY",
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-    } else {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is NOT AVAILABLE❌✋`);
-        postMessage({
-            status: "FAILED",
-            reason: 'ALREADY_BOOKED',
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-        return;
+    Atomics.wait(barrierView, 0, 0);
+
+    for (let i = 0; i < targetSeatIndices.length; i++) {
+        const seatIdx = targetSeatIndices[i];
+        const seatName = targetSeats[i];
+
+        // Atomic compare-and-exchange: only one worker can swap 0→1
+        const result = Atomics.compareExchange(seatView, seatIdx, 0, 1);
+
+        if (result === 0) {
+            // We were the one who changed it from 0 to 1
+            console.log(`Worker ${workerId}: Booked seat ${seatName} ✅`);
+            postMessage({ status: 'BOOKED', workerId, seat: seatName });
+        } else {
+            // Already 1 when we checked — someone else got it
+            console.log(`Worker ${workerId}: Seat ${seatName} already taken ❌`);
+            postMessage({ status: 'ALREADY_BOOKED', workerId, seat: seatName });
+        }
     }
 
-    Atomics.wait(workerInfo.barrierView, 0, 0);
-    // seatView[targetSeat] = 1;
-    // Here We use Atomic.compareExchange to change the state of seat so that only one request can go through and book the seat
-    let result = Atomics.compareExchange(seatView, targetSeat, 0, 1);
-
-    if (result == 0) {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} is BOOKED ✅`);
-        postMessage({
-            status: "BOOKED",
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-    } else {
-        console.log(`Worker Id: ${workerInfo.workerId} and targetSeat : ${seat} Already BOOKED ❌❌`);
-        postMessage({
-            status: "ALREADY_BOOKED",
-            seat: seat,
-            workerId: workerInfo.workerId,
-        });
-    }
+    postMessage({ status: 'DONE', workerId });
 }
