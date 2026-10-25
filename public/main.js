@@ -92,16 +92,16 @@ document.getElementById("simbtn-seat")?.addEventListener("click", runSeatLockSim
 // // functions calling workers
 
 // Safe simulations without locks using Atomic.CompareExhange
-function runSafeSimulation() {
-    simulationStartedAt = performance.now();
+export function runSafeSimulation(options = {}) {
+    const startedAt = performance.now();
+    simulationStartedAt = startedAt;
     addLog("Starting atomic compare-and-exchange simulation.", "System");
-    const inputElement = document.getElementById("safe-sim-numberOfWorkers");
-    const count = parseInt(inputElement.value, 10) || 5;
+
+    const count = options.count ?? (parseInt(document.getElementById("safe-sim-numberOfWorkers")?.value, 10) || 5);
+    const seatInput = options.seats ?? document.getElementById("safe-sim-seat")?.value;
+    const seats = getArrayOfSeats(seatInput);
 
     if (count > MAX_REQUESTS) throw new Error(ERRORS.TOO_MANY_REQUESTS);
-
-    const seat = document.getElementById("safe-sim-seat").value;
-    const seats = getArrayOfSeats(seat);
 
     for (let i = 0; i < seats.length; i++) {
         if (!isValidSeat(seats[i])) throw new Error(ERRORS.INVALID_SEAT);
@@ -148,12 +148,17 @@ function runSafeSimulation() {
             }
 
             if (doneCount === count) {
-                finishView({
-                    "Booked seats": bookedCount,
-                    "Race losses": alreadyBookedCount,
-                    "Duplicates": 0,   // CAS guarantees no duplicates
-                    "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
-                });
+                const time = performance.now() - startedAt;
+                if (options.onFinish) {
+                    options.onFinish({ time, bookedCount, alreadyBookedCount });
+                } else {
+                    finishView({
+                        "Booked seats": bookedCount,
+                        "Race losses": alreadyBookedCount,
+                        "Duplicates": 0,   // CAS guarantees no duplicates
+                        "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
+                    });
+                }
                 for (const w of workers) w.terminate();
             }
         };
@@ -161,19 +166,19 @@ function runSafeSimulation() {
 }
 
 
-function runGlobalLockSimulation() {
-    simulationStartedAt = performance.now();
+export function runGlobalLockSimulation(options = {}) {
+    const startedAt = performance.now();
+    simulationStartedAt = startedAt;
     addLog("Starting global-lock simulation.", "System");
-    const inputElement = document.getElementById("global-sim-numberOfWorkers");
-    const count = parseInt(inputElement.value, 10) || MAX_REQUESTS    // number of workers
+
+    const count = options.count ?? (parseInt(document.getElementById("global-sim-numberOfWorkers")?.value, 10) || 5);
+    const seatInput = options.seats ?? document.getElementById("global-sim-seat")?.value;
+    const seats = getArrayOfSeats(seatInput);
 
     if (count > MAX_REQUESTS) {
         throw new Error(ERRORS.TOO_MANY_REQUESTS);
     }
 
-    const seat = document.getElementById("global-sim-seat").value;
-
-    const seats = getArrayOfSeats(seat);
     for (let i = 0; i < seats.length; i++) {
         if (!isValidSeat(seats[i])) {
             throw new Error(ERRORS.INVALID_SEAT);
@@ -241,7 +246,12 @@ function runGlobalLockSimulation() {
             // All workers finished processing their seats
             if (doneCount === count) {
                 console.log(`Global Lock Sim → Workers: ${count} | Seats: ${seats.length} | Booked: ${bookedCount} | Already Booked: ${alreadyBookedCount}`);
-                finishView({ "Booked seats": bookedCount, "Already booked": alreadyBookedCount, "Workers done": doneCount, "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms` });
+                const time = performance.now() - startedAt;
+                if (options.onFinish) {
+                    options.onFinish({ time, bookedCount, alreadyBookedCount });
+                } else {
+                    finishView({ "Booked seats": bookedCount, "Already booked": alreadyBookedCount, "Workers done": doneCount, "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms` });
+                }
                 for (const w of workers) {
                     w.terminate();
                 }
@@ -250,20 +260,19 @@ function runGlobalLockSimulation() {
     }
 }
 
-function runUnsafeSimulation() {
-    simulationStartedAt = performance.now();
+export function runUnsafeSimulation(options = {}) {
+    const startedAt = performance.now();
+    simulationStartedAt = startedAt;
     addLog("Starting unsafe-lock simulation.", "System");
-    const inputElement = document.getElementById("unsafe-sim-numberOfWorkers");
-    const count = parseInt(inputElement.value, 10) || MAX_REQUESTS    // number of workers
+
+    const count = options.count ?? (parseInt(document.getElementById("unsafe-sim-numberOfWorkers")?.value, 10) || 5);
+    const seatInput = options.seats ?? document.getElementById("unsafe-sim-seat")?.value;
+    const seats = getArrayOfSeats(seatInput);
 
     if (count > MAX_REQUESTS) {
         throw new Error(ERRORS.TOO_MANY_REQUESTS);
     }
 
-    const seat = document.getElementById("unsafe-sim-seat").value;
-    // Distribute the seat into an array of seats
-
-    const seats = getArrayOfSeats(seat);
     // Validate all the seats
     for (let i = 0; i < seats.length; i++) {
         if (!isValidSeat(seats[i])) {
@@ -330,12 +339,17 @@ function runUnsafeSimulation() {
             // All workers finished processing their seats
             if (doneCount === count) {
                 console.log(`Unsafe Lock Sim → Workers: ${count} | Seats: ${seats.length} | Booked: ${bookedCount} | Already Booked: ${alreadyBookedCount}`);
-                finishView({
-                    "Booked seats": bookedCount,
-                    "Duplicates": Math.max(0, bookedCount - seats.length),   // extra bookings = duplicates
-                    "Failed requests": alreadyBookedCount,                   // workers that lost the race
-                    "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
-                });
+                const time = performance.now() - startedAt; const duplicates = Math.max(0, bookedCount - seats.length); // <--- Add this!
+                if (options.onFinish) {
+                    options.onFinish({ time, bookedCount, duplicates, alreadyBookedCount }); // <--- Pass duplicates!
+                } else {
+                    finishView({
+                        "Booked seats": bookedCount,
+                        "Duplicates": duplicates,
+                        "Failed requests": alreadyBookedCount,
+                        "Time": `${time.toFixed(3)} ms`
+                    });
+                }
                 for (const w of workers) {
                     w.terminate();
                 }
@@ -344,19 +358,19 @@ function runUnsafeSimulation() {
     }
 }
 
-function runSeatLockSimulation() {
-    simulationStartedAt = performance.now();
+export function runSeatLockSimulation(options = {}) {
+    const startedAt = performance.now();
+    simulationStartedAt = startedAt;
     addLog("Starting non-blocking per-seat lock simulation.", "System");
 
-    const inputElement = document.getElementById("seat-sim-numberOfWorkers");
-    const count = parseInt(inputElement?.value, 10) || 10;
+    const count = options.count ?? (parseInt(document.getElementById("seat-sim-numberOfWorkers")?.value, 10) || 5);
+    const seatInput = options.seats ?? document.getElementById("seat-sim-seat")?.value;
+
+    const seats = getArrayOfSeats(seatInput);
 
     if (count > MAX_REQUESTS) {
         throw new Error(ERRORS.TOO_MANY_REQUESTS);
     }
-
-    const seatInput = document.getElementById("seat-sim-seat")?.value || "A1, B1, C1";
-    const seats = getArrayOfSeats(seatInput);
 
     for (let i = 0; i < seats.length; i++) {
         if (!isValidSeat(seats[i])) {
@@ -428,12 +442,18 @@ function runSeatLockSimulation() {
 
             // All workers completed
             if (doneCount === count) {
-                finishView({
-                    "Booked seats": bookedCount,
-                    "Race losses": alreadyBookedCount,
-                    "Parallel locks": maxParallelLocks,
-                    "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
-                });
+                const time = performance.now() - startedAt;
+                if (options.onFinish) {
+                    options.onFinish({ time, bookedCount, alreadyBookedCount });
+                }
+                else {
+                    finishView({
+                        "Booked seats": bookedCount,
+                        "Race losses": alreadyBookedCount,
+                        "Parallel locks": maxParallelLocks,
+                        "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
+                    });
+                }
                 for (const w of workers) {
                     w.terminate();
                 }
