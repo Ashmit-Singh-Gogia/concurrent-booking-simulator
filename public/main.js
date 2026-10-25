@@ -1,7 +1,5 @@
 import { ERRORS, MAX_REQUESTS, MAX_SEAT_SELECTION } from "./constants/constants.js";
-import { getSeatView } from "./shared_state/shared_state.js"
 import { isValidSeat } from "./common/validateSeat.js";
-import { seatToIndex } from "./seat_model/seat_model.js";
 import { getArrayOfSeats, getSeatIndices } from "./common/parseSeats.js"
 
 
@@ -12,7 +10,6 @@ let simulationStartedAt = 0;
 // so the landing and comparison pages can load this module safely.
 document.querySelectorAll("button[type='reset']").forEach(button => {
     button.addEventListener("click", () => {
-        getSeatView().fill(0);
         clearSimulationView();
     });
 });
@@ -111,6 +108,9 @@ function runSafeSimulation() {
     }
     if (seats.length > MAX_SEAT_SELECTION) throw new Error(ERRORS.TOO_MANY_SEATS);
 
+    const seatSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
+    const seatView = new Int32Array(seatSab);
+
     const barrierSab = new SharedArrayBuffer(4);
     const barrierView = new Int32Array(barrierSab);
 
@@ -126,7 +126,7 @@ function runSafeSimulation() {
             workerId: i,
             targetSeats: seats,
             targetSeatIndices: getSeatIndices(seats),
-            seatView: getSeatView(),
+            seatView: seatView,
             barrierView: barrierView,
         };
         worker.postMessage(workerInfo);
@@ -184,8 +184,12 @@ function runGlobalLockSimulation() {
         throw new Error(ERRORS.TOO_MANY_SEATS);
     }
 
+    const seatSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
+    const seatView = new Int32Array(seatSab);
+
     const globalSharedBufferLock = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
     const globalLockView = new Int32Array(globalSharedBufferLock);
+
 
     const barrierSab = new SharedArrayBuffer(4);
     const barrierView = new Int32Array(barrierSab);
@@ -204,7 +208,7 @@ function runGlobalLockSimulation() {
             workerId: i,
             targetSeats: seats,
             targetSeatIndices: getSeatIndices(seats),
-            seatView: getSeatView(),
+            seatView: seatView,
             globalLockView: globalLockView,
             barrierView: barrierView,
         }
@@ -273,8 +277,12 @@ function runUnsafeSimulation() {
         throw new Error(ERRORS.TOO_MANY_SEATS);
     }
 
+    const seatSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
+    const seatView = new Int32Array(seatSab);
+
     const barrierSab = new SharedArrayBuffer(4);
     const barrierView = new Int32Array(barrierSab);
+
 
     const workers = [];
 
@@ -290,7 +298,7 @@ function runUnsafeSimulation() {
             workerId: i,
             targetSeats: seats,      // direct seats are sent -> A1 , E3 , etc,
             targetSeatIndices: allotedSeatIndices,  // indices of the seats are sent
-            seatView: getSeatView(),
+            seatView: seatView,
             barrierView: barrierView,
         }
 
@@ -360,6 +368,9 @@ function runSeatLockSimulation() {
         throw new Error(ERRORS.TOO_MANY_SEATS);
     }
 
+    const seatSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
+    const seatView = new Int32Array(seatSab);
+
     // 100 dedicated 32-bit locks (one for each seat)
     const lockSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
     const lockView = new Int32Array(lockSab);
@@ -380,7 +391,7 @@ function runSeatLockSimulation() {
             workerId: i,
             targetSeats: seats,
             targetSeatIndices: getSeatIndices(seats),
-            seatView: getSeatView(),
+            seatView: seatView,
             lockView: lockView,
             barrierView: barrierView,
         };
