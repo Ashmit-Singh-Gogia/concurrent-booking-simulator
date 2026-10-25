@@ -40,6 +40,7 @@ function markSeat(seat, className) {
         if (cell.textContent.trim().toUpperCase() === seat.toUpperCase()) {
             cell.classList.remove("conflict", "active");
             if (className === "booked") cell.classList.add("booked");
+            else if (className === "active") cell.classList.add("active");
         }
     });
 }
@@ -48,15 +49,20 @@ function recordWorkerEvent(data) {
     const worker = data.workerId === undefined ? "Worker" : `Worker ${data.workerId}`;
     if (data.status === "READY") {
         addLog(`${worker} is ready${data.seat ? ` for seat ${data.seat}` : ""}.`, "Worker");
+    } else if (data.status === "LOCKED_SKIPPED") {
+        addLog(`${worker} skipped seat ${data.seat} (locked by another worker) ⏩`, "Worker");
+    } else if (data.status === "LOCK_ACQUIRED") {
+        markSeat(data.seat, "active");
+        addLog(`${worker} acquired lock on ${data.seat} 🔒`, "Worker");
+    } else if (data.status === "LOCK_RELEASED") {
+        addLog(`${worker} released lock on ${data.seat} 🔓`, "Worker");
     } else if (data.status === "BOOKED") {
         markSeat(data.seat, "booked");
         addLog(`${worker} booked seat ${data.seat} successfully ✅`, "Worker");
     } else if (data.status === "ALREADY_BOOKED") {
-        addLog(`${worker} lost the race — seat ${data.seat} was already booked ❌`, "Worker");
-    } else if (data.status === "FAILED") {
-        addLog(`${worker} could not book seat ${data.seat} — seat already booked ❌`, "Worker");
+        addLog(`${worker} checked ${data.seat} — already booked ❌`, "Worker");
     } else if (data.status === "DONE") {
-        addLog(`${worker} finished its assigned work.`, "Worker");
+        addLog(`${worker} finished trying all seats.`, "Worker");
     }
 }
 
@@ -77,9 +83,11 @@ function clearSimulationView() {
 
 addLog("Simulation ready. Enter inputs and run.", "System");
 
+// Dom elements for event listeners
 document.getElementById("simbtn-unsafe")?.addEventListener("click", runUnsafeSimulation);
 document.getElementById("simbtn-safe")?.addEventListener("click", runSafeSimulation);
 document.getElementById("simbtn-global")?.addEventListener("click", runGlobalLockSimulation);
+document.getElementById("simbtn-seat")?.addEventListener("click", runSeatLockSimulation);
 
 
 
@@ -325,5 +333,100 @@ function runUnsafeSimulation() {
                 }
             }
         }
+    }
+}
+
+function runSeatLockSimulation() {
+    simulationStartedAt = performance.now();
+    addLog("Starting non-blocking per-seat lock simulation.", "System");
+
+    const inputElement = document.getElementById("seat-sim-numberOfWorkers");
+    const count = parseInt(inputElement?.value, 10) || 10;
+
+    if (count > MAX_REQUESTS) {
+        throw new Error(ERRORS.TOO_MANY_REQUESTS);
+    }
+
+    const seatInput = document.getElementById("seat-sim-seat")?.value || "A1, B1, C1";
+    const seats = getArrayOfSeats(seatInput);
+
+    for (let i = 0; i < seats.length; i++) {
+        if (!isValidSeat(seats[i])) {
+            throw new Error(ERRORS.INVALID_SEAT);
+        }
+    }
+
+    if (seats.length > MAX_SEAT_SELECTION) {
+        throw new Error(ERRORS.TOO_MANY_SEATS);
+    }
+
+    // 100 dedicated 32-bit locks (one for each seat)
+    const lockSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 100);
+    const lockView = new Int32Array(lockSab);
+
+    const barrierSab = new SharedArrayBuffer(4);
+    const barrierView = new Int32Array(barrierSab);
+
+    const workers = [];
+    let readyCount = 0, bookedCount = 0, alreadyBookedCount = 0, doneCount = 0;
+    let activeLocks = 0, maxParallelLocks = 0;
+    let notified = false;
+
+    for (let i = 0; i < count; i++) {
+        const worker = new Worker(`${workerRoot}per_seat_lock_worker.js`);
+        workers.push(worker);
+
+        const workerInfo = {
+            workerId: i,
+            targetSeats: seats,
+            targetSeatIndices: getSeatIndices(seats),
+            seatView: getSeatView(),
+            lockView: lockView,
+            barrierView: barrierView,
+        };
+
+        worker.postMessage(workerInfo);
+
+        worker.onmessage = (ev) => {
+            const { status } = ev.data;
+            recordWorkerEvent(ev.data);
+
+            if (status === 'READY') {
+                readyCount++;
+            } else if (status === 'LOCK_ACQUIRED') {
+                activeLocks++;
+                if (activeLocks > maxParallelLocks) maxParallelLocks = activeLocks;
+                setMetric("Parallel locks", maxParallelLocks);
+            } else if (status === 'LOCK_RELEASED') {
+                activeLocks = Math.max(0, activeLocks - 1);
+            } else if (status === 'BOOKED') {
+                bookedCount++;
+            } else if (status === 'ALREADY_BOOKED') {
+                alreadyBookedCount++;
+            } else if (status === 'DONE') {
+                doneCount++;
+            }
+
+            // Release barrier once all workers are standing by
+            if (readyCount === count && !notified) {
+                notified = true;
+                barrierView[0] = 10;
+                Atomics.notify(barrierView, 0, count);
+                addLog(`All ${count} workers ready — barrier released.`, "System");
+            }
+
+            // All workers completed
+            if (doneCount === count) {
+                finishView({
+                    "Booked seats": bookedCount,
+                    "Race losses": alreadyBookedCount,
+                    "Parallel locks": maxParallelLocks,
+                    "Time": `${(performance.now() - simulationStartedAt).toFixed(3)} ms`
+                });
+                for (const w of workers) {
+                    w.terminate();
+                }
+            }
+        };
     }
 }
